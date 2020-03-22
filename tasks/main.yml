@@ -1,0 +1,42 @@
+---
+# tasks file for ansible_role_go
+- name: Create a temporary directory
+  tempfile:
+    state: directory
+    suffix: go
+  register: go_tempfile
+  notify: "go_tempfile_cleanup"
+
+- name: Download the Go binary tarball
+  get_url:
+    url: "https://dl.google.com/go/go{{ item }}.{{ go_operating_system }}-{{ go_architecture }}.tar.gz"
+    dest: "{{ go_tempfile.path }}"
+  loop: "{{ go_versions }}"
+
+- name: Create a directory in /usr/local to extract the tarball into
+  file:
+    path: "/usr/local/go-{{ item }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+  become: true
+  become_user: root
+  loop: "{{ go_versions }}"
+
+- name: Extract Go binary tarball
+  unarchive:
+    src: "{{ go_tempfile.path }}/go{{ item }}.{{ go_operating_system }}-{{ go_architecture }}.tar.gz"
+    dest: "/usr/local/go-{{ item }}"
+  become: true
+  become_user: root
+  loop: "{{ go_versions }}"
+
+- name: Link the go binary to /usr/local/bin/
+  file:
+    src: "/usr/local/go-{{ item }}/go/bin/go"
+    dest: "/usr/local/bin/go-{{ item }}"
+    state: link
+  become: true
+  become_user: root
+  loop: "{{ go_versions }}"
